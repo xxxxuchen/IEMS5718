@@ -2,9 +2,17 @@
 .env
 .env.local
 .env.*.local
+backend/.env
 
 # Database
 *.db
+backend/db/*.db
+
+# Uploads
+backend/uploads/
+
+# PEM keys
+*.pem
 
 # Logs
 logs
