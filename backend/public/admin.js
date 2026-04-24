@@ -204,8 +204,88 @@ async function checkAdmin() {
   }
 }
 
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = String(str ?? "");
+  return div.innerHTML;
+}
+
+async function loadOrders() {
+  const container = document.getElementById("ordersContainer");
+  container.innerHTML = "Loading...";
+  const res = await fetch("/api/admin/orders", {
+    credentials: "include",
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    container.innerHTML = "Failed to load orders: " + escapeHtml(data.error);
+    return;
+  }
+
+  if (!Array.isArray(data) || data.length === 0) {
+    container.innerHTML = "No orders yet.";
+    return;
+  }
+
+  const rows = data
+    .map((o) => {
+      const items = (o.items || [])
+        .map(
+          (it) =>
+            `${escapeHtml(it.name)} (#${escapeHtml(it.pid)}) x ${escapeHtml(
+              it.qty,
+            )} @ ${escapeHtml(o.currency)} ${Number(it.price).toFixed(2)}`,
+        )
+        .join("<br/>");
+
+      return `
+        <tr>
+          <td>${escapeHtml(o.order_id)}</td>
+          <td>${escapeHtml(o.userid ?? "")}</td>
+          <td>${escapeHtml(o.status)}</td>
+          <td>${escapeHtml(o.currency)} ${Number(o.total).toFixed(2)}</td>
+          <td>${escapeHtml(o.paypal_order_id ?? "")}</td>
+          <td>${escapeHtml(o.payment_status ?? "")}</td>
+          <td>${escapeHtml(o.capture_id ?? "")}</td>
+          <td>${escapeHtml(o.payer_email ?? "")}</td>
+          <td>${escapeHtml(o.created_at ?? "")}</td>
+          <td>${escapeHtml(o.paid_at ?? "")}</td>
+          <td>${items}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  container.innerHTML = `
+    <div style="overflow:auto; max-width: 100%">
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse: collapse; min-width: 1000px">
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>User ID</th>
+            <th>Status</th>
+            <th>Total</th>
+            <th>PayPal Order</th>
+            <th>Pay Status</th>
+            <th>Capture ID</th>
+            <th>Payer</th>
+            <th>Created</th>
+            <th>Paid</th>
+            <th>Items</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 (async () => {
   await checkAdmin();
   await fetchCsrfToken();
   await loadCategories();
+  document
+    .getElementById("refreshOrdersBtn")
+    .addEventListener("click", loadOrders);
+  await loadOrders();
 })();

@@ -43,6 +43,12 @@ const Navbar = ({
             <a onClick={() => setPage("home")}>Home</a>
           </li>
 
+          {user && (
+            <li>
+              <a onClick={() => setPage("orders")}>My Orders</a>
+            </li>
+          )}
+
           {categories.map((cat) => (
             <li key={cat.catid}>
               <a

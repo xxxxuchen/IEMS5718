@@ -43,9 +43,8 @@ echo "==> [4/6] Upload backend tarball to EC2 (/tmp/backend.tar.gz)"
 scp -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new "$TMP_TAR" "${EC2_USER}@${EC2_HOST}:/tmp/backend.tar.gz"
 rm -f "$TMP_TAR"
 
-# Upload local .env if it doesn't exist on the server (first time setup)
-
-# scp -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new backend/.env "${EC2_USER}@${EC2_HOST}:/tmp/.env.tmp" || true
+echo "==> [4.5/6] Upload backend .env to EC2 (/tmp/.env.tmp)"
+scp -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new backend/.env "${EC2_USER}@${EC2_HOST}:/tmp/.env.tmp"
 
 echo "==> [5/6] Remote deploy: update files, install deps, restart PM2 & Nginx"
 ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new "${EC2_USER}@${EC2_HOST}" bash -s <<EOF
@@ -70,8 +69,18 @@ rm -f /tmp/backend.tar.gz
 
 # Handle .env (if uploaded as tmp)
 if [ -f /tmp/.env.tmp ]; then
-  echo "  -> Setting up initial .env file"
-  mv /tmp/.env.tmp "\$REMOTE_APP_DIR/backend/.env"
+  if [ -f "\$REMOTE_APP_DIR/backend/.env" ]; then
+    if cmp -s /tmp/.env.tmp "\$REMOTE_APP_DIR/backend/.env"; then
+      rm -f /tmp/.env.tmp
+    else
+      echo "  -> Updating backend .env (backup old)"
+      cp "\$REMOTE_APP_DIR/backend/.env" "\$REMOTE_APP_DIR/backend/.env.bak.\$(date +%Y%m%d%H%M%S)"
+      mv /tmp/.env.tmp "\$REMOTE_APP_DIR/backend/.env"
+    fi
+  else
+    echo "  -> Setting up initial backend .env file"
+    mv /tmp/.env.tmp "\$REMOTE_APP_DIR/backend/.env"
+  fi
 fi
 
 echo "  -> Install backend deps"
@@ -101,6 +110,7 @@ pm2 save
 echo "  -> Validate and reload nginx"
 sudo nginx -t
 sudo systemctl restart nginx
+sudo nginx -T 2>/dev/null | grep -q "location /uploads/" || echo "  -> Warning: nginx is missing 'location /uploads/' (product images may not load)"
 
 echo "  -> Done on server"
 EOF

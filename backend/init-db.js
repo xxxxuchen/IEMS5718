@@ -14,6 +14,9 @@ db.serialize(() => {
   db.run("DROP TABLE IF EXISTS products");
   db.run("DROP TABLE IF EXISTS categories");
   db.run("DROP TABLE IF EXISTS users");
+  db.run("DROP TABLE IF EXISTS order_items");
+  db.run("DROP TABLE IF EXISTS payments");
+  db.run("DROP TABLE IF EXISTS orders");
 
   db.run(`
     CREATE TABLE users (
@@ -43,6 +46,55 @@ db.serialize(() => {
       FOREIGN KEY (catid) REFERENCES categories(catid)
     )
   `);
+
+  db.run(`
+    CREATE TABLE orders (
+      order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userid INTEGER,
+      status TEXT NOT NULL,
+      currency TEXT NOT NULL,
+      merchant_email TEXT NOT NULL,
+      salt TEXT NOT NULL,
+      digest TEXT NOT NULL,
+      total REAL NOT NULL,
+      paypal_order_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      paid_at DATETIME,
+      FOREIGN KEY (userid) REFERENCES users(userid)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE order_items (
+      order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      pid INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      price REAL NOT NULL,
+      qty INTEGER NOT NULL,
+      FOREIGN KEY (order_id) REFERENCES orders(order_id),
+      FOREIGN KEY (pid) REFERENCES products(pid)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE payments (
+      payment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      provider TEXT NOT NULL,
+      paypal_order_id TEXT,
+      capture_id TEXT UNIQUE,
+      status TEXT,
+      payer_email TEXT,
+      amount REAL,
+      currency TEXT,
+      processed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (order_id) REFERENCES orders(order_id)
+    )
+  `);
+
+  db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_paypal_order_id ON orders(paypal_order_id)`);
+  db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_capture_id ON payments(capture_id)`);
 
   db.run(`INSERT INTO categories (name) VALUES (?)`, ["Electronics"]);
   db.run(`INSERT INTO categories (name) VALUES (?)`, ["Accessories"]);

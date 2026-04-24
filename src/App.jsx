@@ -7,6 +7,7 @@ import ProductDetail from "./components/ProductDetail";
 import Cart from "./components/Cart";
 import Login from "./components/Login";
 import Register from "./components/Register";
+import Orders from "./components/Orders";
 
 function App() {
   const { loading } = useAuth();
@@ -138,6 +139,13 @@ function App() {
     0,
   );
 
+  const handleCheckoutSuccess = () => {
+    setCartItems([]);
+    localStorage.removeItem("cart");
+    setCartOpen(false);
+    setPage("home");
+  };
+
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -157,6 +165,7 @@ function App() {
           onDeleteItem={deleteItem}
           totalAmount={totalAmount}
           onClose={() => setCartOpen(false)}
+          onCheckoutSuccess={handleCheckoutSuccess}
         />
       )}
 
@@ -170,6 +179,7 @@ function App() {
         )}
         {page === "login" && <>Login</>}
         {page === "register" && <>Register</>}
+        {page === "orders" && <>My Orders</>}
       </nav>
 
       <main className="main-content">
@@ -193,6 +203,8 @@ function App() {
         )}
 
         {page === "register" && <Register onSwitch={() => setPage("login")} />}
+
+        {page === "orders" && <Orders />}
       </main>
 
       <footer className="site-footer">
