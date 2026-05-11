@@ -412,6 +412,7 @@ app.use("/uploads", express.static(uploadsDir));
 // Admin Panel Routes
 app.use(
   "/admin",
+  isAdmin,
   express.static(path.join(__dirname, "public"), { index: "admin.html" }),
 );
 
